@@ -1,0 +1,6 @@
+@SkillLoop.Api_HostAddress = http://localhost:5194
+
+GET {{SkillLoop.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
