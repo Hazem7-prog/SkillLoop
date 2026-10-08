@@ -41,6 +41,8 @@ builder.Services.AddAuthentication(o =>
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt["Key"]!))
     };
 });
+builder.Services.AddScoped<IWalletService, FakeWalletService>();
+builder.Services.AddScoped<IChatService, FakeChatService>();
 
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddControllers();
