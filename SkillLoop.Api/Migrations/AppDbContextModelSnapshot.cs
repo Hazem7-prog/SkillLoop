@@ -302,6 +302,56 @@ namespace SkillLoop.Api.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Categories");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Icon = "code",
+                            Name = "Programming"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Icon = "palette",
+                            Name = "Design"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Icon = "language",
+                            Name = "Languages"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Icon = "music",
+                            Name = "Music"
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Icon = "briefcase",
+                            Name = "Business"
+                        },
+                        new
+                        {
+                            Id = 6,
+                            Icon = "camera",
+                            Name = "Photography"
+                        },
+                        new
+                        {
+                            Id = 7,
+                            Icon = "chef-hat",
+                            Name = "Cooking"
+                        },
+                        new
+                        {
+                            Id = 8,
+                            Icon = "dumbbell",
+                            Name = "Fitness"
+                        });
                 });
 
             modelBuilder.Entity("SkillLoop.Api.Models.Course", b =>
