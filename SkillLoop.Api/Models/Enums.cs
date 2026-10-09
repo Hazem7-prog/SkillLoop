@@ -1,5 +1,8 @@
+using System.Text.Json.Serialization;
+
 namespace SkillLoop.Api.Models;
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum CourseLevel
 {
     Beginner = 0,
@@ -7,18 +10,21 @@ public enum CourseLevel
     Advanced = 2
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum CourseStatus
 {
     Active = 0,
     Archived = 1
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum BookingType
 {
     Online = 0,
     Offline = 1
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum BookingStatus
 {
     Upcoming = 0,

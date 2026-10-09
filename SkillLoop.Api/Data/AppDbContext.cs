@@ -25,11 +25,14 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<Course>().HasIndex(c => c.TeacherId);
         builder.Entity<Booking>().HasIndex(b => b.StudentId);
 
-        // A slot can only be booked once, unless the booking was cancelled (Cancelled = 2)
+    // Same student cannot book the same slot twice (capacity is checked in the booking service)
         builder.Entity<Booking>()
-            .HasIndex(b => new { b.CourseId, b.StartTime })
+            .HasIndex(b => new { b.CourseId, b.StudentId, b.StartTime })
             .IsUnique()
             .HasFilter("[Status] <> 2");
+
+        builder.Entity<Course>().Property(c => c.MaxStudentsPerSession).HasDefaultValue(1);
+        builder.Entity<Course>().Property(c => c.AllowsOnline).HasDefaultValue(true);
             
         builder.Entity<Category>().HasData(
             new Category { Id = 1, Name = "Programming",  Icon = "code" },
