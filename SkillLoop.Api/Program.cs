@@ -43,6 +43,7 @@ builder.Services.AddAuthentication(o =>
 });
 builder.Services.AddScoped<IWalletService, FakeWalletService>();
 builder.Services.AddScoped<IChatService, FakeChatService>();
+builder.Services.AddScoped<IConversationService, ConversationService>();
 
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddControllers();
@@ -68,6 +69,8 @@ builder.Services.AddSwaggerGen(c =>
         }
     });
 });
+
+
 
 //137
 

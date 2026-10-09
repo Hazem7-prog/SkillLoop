@@ -354,6 +354,39 @@ namespace SkillLoop.Api.Migrations
                         });
                 });
 
+            modelBuilder.Entity("SkillLoop.Api.Models.Conversation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("CourseId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("Participant1Id")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Participant2Id")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CourseId");
+
+                    b.HasIndex("Participant1Id");
+
+                    b.HasIndex("Participant2Id");
+
+                    b.ToTable("Conversations");
+                });
+
             modelBuilder.Entity("SkillLoop.Api.Models.Course", b =>
                 {
                     b.Property<int>("Id")
@@ -430,6 +463,39 @@ namespace SkillLoop.Api.Migrations
                     b.HasIndex("CourseId");
 
                     b.ToTable("CourseAvailabilities");
+                });
+
+            modelBuilder.Entity("SkillLoop.Api.Models.Message", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ConversationId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("SenderId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTimeOffset>("SentAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConversationId", "SentAt");
+
+                    b.ToTable("Messages");
                 });
 
             modelBuilder.Entity("SkillLoop.Api.Models.PasswordResetOtp", b =>
@@ -539,6 +605,16 @@ namespace SkillLoop.Api.Migrations
                     b.Navigation("Course");
                 });
 
+            modelBuilder.Entity("SkillLoop.Api.Models.Conversation", b =>
+                {
+                    b.HasOne("SkillLoop.Api.Models.Course", "Course")
+                        .WithMany()
+                        .HasForeignKey("CourseId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Course");
+                });
+
             modelBuilder.Entity("SkillLoop.Api.Models.Course", b =>
                 {
                     b.HasOne("SkillLoop.Api.Models.Category", "Category")
@@ -561,6 +637,17 @@ namespace SkillLoop.Api.Migrations
                     b.Navigation("Course");
                 });
 
+            modelBuilder.Entity("SkillLoop.Api.Models.Message", b =>
+                {
+                    b.HasOne("SkillLoop.Api.Models.Conversation", "Conversation")
+                        .WithMany("Messages")
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Conversation");
+                });
+
             modelBuilder.Entity("SkillLoop.Api.Models.SavedCourse", b =>
                 {
                     b.HasOne("SkillLoop.Api.Models.Course", "Course")
@@ -575,6 +662,11 @@ namespace SkillLoop.Api.Migrations
             modelBuilder.Entity("SkillLoop.Api.Models.Category", b =>
                 {
                     b.Navigation("Courses");
+                });
+
+            modelBuilder.Entity("SkillLoop.Api.Models.Conversation", b =>
+                {
+                    b.Navigation("Messages");
                 });
 
             modelBuilder.Entity("SkillLoop.Api.Models.Course", b =>
