@@ -7,6 +7,7 @@ using Microsoft.OpenApi.Models;
 using SkillLoop.Api.Data;
 using SkillLoop.Api.Models;
 using SkillLoop.Api.Services;
+using SkillLoop.Api.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -40,10 +41,28 @@ builder.Services.AddAuthentication(o =>
         ValidAudience = jwt["Audience"],
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt["Key"]!))
     };
+    o.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var token = context.Request.Query["access_token"];
+
+            var path = context.HttpContext.Request.Path;
+
+            if (!string.IsNullOrEmpty(token) &&
+                path.StartsWithSegments("/hubs/chat"))
+            {
+                context.Token = token;
+            }
+
+            return Task.CompletedTask;
+        }
+    };
 });
 builder.Services.AddScoped<IWalletService, FakeWalletService>();
 builder.Services.AddScoped<IChatService, FakeChatService>();
 builder.Services.AddScoped<IConversationService, ConversationService>();
+builder.Services.AddSignalR();
 
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddControllers();
@@ -81,6 +100,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+app.MapHub<ChatHub>("/hubs/chat");
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();

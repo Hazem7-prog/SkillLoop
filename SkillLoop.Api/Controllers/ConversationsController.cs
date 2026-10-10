@@ -18,18 +18,28 @@ namespace SkillLoop.Api.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetConversations()
+        public async Task<IActionResult> GetConversations([FromQuery] string? filter = null)
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userId = User.FindFirstValue( ClaimTypes.NameIdentifier);
 
             if (string.IsNullOrEmpty(userId))
-            {
                 return Unauthorized();
+
+            filter = filter?.Trim().ToLowerInvariant();
+
+            if (!string.IsNullOrEmpty(filter) &&
+                filter != "read" &&
+                filter != "unread")
+            {
+                return BadRequest(new
+                {
+                    error = "Filter must be read or unread",
+                    code = "INVALID_FILTER"
+                });
             }
 
-            var conversations =
-                await _conversationService
-                    .GetUserConversationsAsync(userId);
+            var conversations = await _conversationService
+                .GetUserConversationsAsync(userId, filter);
 
             return Ok(conversations);
         }
