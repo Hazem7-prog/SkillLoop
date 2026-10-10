@@ -276,7 +276,7 @@ namespace SkillLoop.Api.Migrations
 
                     b.HasIndex("StudentId");
 
-                    b.HasIndex("CourseId", "StartTime")
+                    b.HasIndex("CourseId", "StudentId", "StartTime")
                         .IsUnique()
                         .HasFilter("[Status] <> 2");
 
@@ -395,8 +395,19 @@ namespace SkillLoop.Api.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<bool>("AllowsOffline")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("AllowsOnline")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
                     b.Property<int>("CategoryId")
                         .HasColumnType("int");
+
+                    b.Property<string>("CoverImageUrl")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("datetimeoffset");
@@ -408,8 +419,20 @@ namespace SkillLoop.Api.Migrations
                     b.Property<int>("DurationMinutes")
                         .HasColumnType("int");
 
+                    b.Property<string>("LearningOutcomes")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int>("Level")
                         .HasColumnType("int");
+
+                    b.Property<int>("MaxStudentsPerSession")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
+                    b.Property<string>("OfflineLocation")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("PricePerSession")
                         .HasColumnType("int");

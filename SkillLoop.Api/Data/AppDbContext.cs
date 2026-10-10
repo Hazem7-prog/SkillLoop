@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+﻿
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using SkillLoop.Api.Models;
 
@@ -6,7 +7,8 @@ namespace SkillLoop.Api.Data;
 
 public class AppDbContext : IdentityDbContext<ApplicationUser>
 {
-    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
+    public AppDbContext(DbContextOptions<AppDbContext> options)
+        : base(options) { }
 
     public DbSet<PasswordResetOtp> PasswordResetOtps => Set<PasswordResetOtp>();
     public DbSet<Category> Categories => Set<Category>();
@@ -16,25 +18,41 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<SavedCourse> SavedCourses => Set<SavedCourse>();
 
     public DbSet<Conversation> Conversations => Set<Conversation>();
-
     public DbSet<Message> Messages => Set<Message>();
-
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
 
-        // --- Courses & Booking (B) ---
-        builder.Entity<SavedCourse>().HasKey(s => new { s.UserId, s.CourseId });
+        // Courses & Booking (B)
 
-        builder.Entity<Course>().HasIndex(c => c.TeacherId);
-        builder.Entity<Booking>().HasIndex(b => b.StudentId);
+        builder.Entity<SavedCourse>()
+            .HasKey(s => new { s.UserId, s.CourseId });
 
-        // A slot can only be booked once, unless the booking was cancelled (Cancelled = 2)
+        builder.Entity<Course>()
+            .HasIndex(c => c.TeacherId);
+
         builder.Entity<Booking>()
-            .HasIndex(b => new { b.CourseId, b.StartTime })
+            .HasIndex(b => b.StudentId);
+
+        // Prevent booking the same slot twice
+        builder.Entity<Booking>()
+            .HasIndex(b => new
+            {
+                b.CourseId,
+                b.StudentId,
+                b.StartTime
+            })
             .IsUnique()
             .HasFilter("[Status] <> 2");
+
+        builder.Entity<Course>()
+            .Property(c => c.MaxStudentsPerSession)
+            .HasDefaultValue(1);
+
+        builder.Entity<Course>()
+            .Property(c => c.AllowsOnline)
+            .HasDefaultValue(true);
 
         builder.Entity<Category>().HasData(
             new Category { Id = 1, Name = "Programming", Icon = "code" },
@@ -44,36 +62,39 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             new Category { Id = 5, Name = "Business", Icon = "briefcase" },
             new Category { Id = 6, Name = "Photography", Icon = "camera" },
             new Category { Id = 7, Name = "Cooking", Icon = "chef-hat" },
-            new Category { Id = 8, Name = "Fitness", Icon = "dumbbell" });
+            new Category { Id = 8, Name = "Fitness", Icon = "dumbbell" }
+        );
 
+        // Chat & Conversations (C)
 
-            builder.Entity<Conversation>()
-           .HasOne(c => c.Course)
-           .WithMany()
-           .HasForeignKey(c => c.CourseId)
-           .OnDelete(DeleteBehavior.SetNull);
+        builder.Entity<Conversation>()
+            .HasOne(c => c.Course)
+            .WithMany()
+            .HasForeignKey(c => c.CourseId)
+            .OnDelete(DeleteBehavior.SetNull);
 
-        
-            builder.Entity<Message>()
+        builder.Entity<Message>()
             .HasOne(m => m.Conversation)
             .WithMany(c => c.Messages)
             .HasForeignKey(m => m.ConversationId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        
-           builder.Entity<Conversation>()
+        builder.Entity<Conversation>()
             .HasIndex(c => c.Participant1Id);
 
-            builder.Entity<Conversation>()
+        builder.Entity<Conversation>()
             .HasIndex(c => c.Participant2Id);
 
-             builder.Entity<Message>()
+        builder.Entity<Message>()
             .Property(m => m.Text)
             .HasMaxLength(4000)
             .IsRequired();
 
-             builder.Entity<Message>()
-            .HasIndex(m => new { m.ConversationId, m.SentAt }
-        );
+        builder.Entity<Message>()
+            .HasIndex(m => new
+            {
+                m.ConversationId,
+                m.SentAt
+            });
     }
 }
