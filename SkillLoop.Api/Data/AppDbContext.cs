@@ -20,6 +20,16 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Conversation> Conversations => Set<Conversation>();
     public DbSet<Message> Messages => Set<Message>();
 
+
+    public DbSet<Wallet> Wallets => Set<Wallet>();
+
+    public DbSet<Transaction> Transactions => Set<Transaction>();
+
+    public DbSet<PromoCode> PromoCodes => Set<PromoCode>();
+
+    public DbSet<PromoCodeRedemption> PromoCodeRedemptions => Set<PromoCodeRedemption>();
+
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -96,5 +106,42 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
                 m.ConversationId,
                 m.SentAt
             });
+
+
+
+        // Wallet
+
+        builder.Entity<Wallet>()
+            .HasKey(w => w.UserId);
+
+        // Transactions
+
+        builder.Entity<Transaction>()
+            .ToTable("WalletTransactions");
+
+        builder.Entity<Transaction>()
+            .HasIndex(t => new { t.UserId, t.CreatedAt });
+
+        builder.Entity<Transaction>()
+            .HasIndex(t => new { t.BookingId, t.Type })
+            .IsUnique()
+            .HasFilter("[BookingId] IS NOT NULL");
+
+        // Promo Codes
+
+        builder.Entity<PromoCode>()
+            .HasIndex(p => p.Code)
+            .IsUnique();
+
+        // Promo Code Redemptions
+
+        builder.Entity<PromoCodeRedemption>()
+            .HasKey(r => new { r.UserId, r.PromoCodeId });
+
+        builder.Entity<PromoCodeRedemption>()
+            .HasOne<PromoCode>()
+            .WithMany()
+            .HasForeignKey(r => r.PromoCodeId);
+
     }
 }

@@ -31,3 +31,13 @@ public enum BookingStatus
     Completed = 1,
     Cancelled = 2
 }
+
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum TransactionType
+{
+    SessionBooking,
+    SessionEarning,
+    Purchase,
+    PromoCode,
+    Refund
+}
