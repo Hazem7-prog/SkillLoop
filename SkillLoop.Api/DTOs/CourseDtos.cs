@@ -18,6 +18,10 @@ public class CourseListItemDto
     public string TeacherId { get; set; } = string.Empty;
     public string TeacherName { get; set; } = string.Empty;
     public string? TeacherAvatarUrl { get; set; }
+
+    // Filled from A's Review table once it exists (design shows "4.9 (122)")
+    public double? AverageRating { get; set; }
+    public int ReviewsCount { get; set; }
 }
 
 public class CourseDetailsDto : CourseListItemDto
@@ -30,10 +34,6 @@ public class CourseDetailsDto : CourseListItemDto
     public bool AllowsOnline { get; set; }
     public bool AllowsOffline { get; set; }
     public string? OfflineLocation { get; set; }
-
-    // Filled from A's Review table once it exists (design shows "4.9 (122)")
-    public double? AverageRating { get; set; }
-    public int ReviewsCount { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public int StudentsCount { get; set; }
     public bool IsSaved { get; set; }
