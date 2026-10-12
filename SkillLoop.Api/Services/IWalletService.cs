@@ -6,4 +6,7 @@ public interface IWalletService
     Task<bool> DeductCredits(string userId, int amount, int bookingId);
     Task RefundCredits(int bookingId);
     Task PayTeacher(int bookingId);
+
+   
+    
 }

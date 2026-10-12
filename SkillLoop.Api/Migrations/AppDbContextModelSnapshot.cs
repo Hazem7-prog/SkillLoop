@@ -551,6 +551,50 @@ namespace SkillLoop.Api.Migrations
                     b.ToTable("PasswordResetOtps");
                 });
 
+            modelBuilder.Entity("SkillLoop.Api.Models.PromoCode", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("Credits")
+                        .HasColumnType("int");
+
+                    b.Property<DateTimeOffset>("ExpiryDate")
+                        .HasColumnType("datetimeoffset");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.ToTable("PromoCodes");
+                });
+
+            modelBuilder.Entity("SkillLoop.Api.Models.PromoCodeRedemption", b =>
+                {
+                    b.Property<string>("UserId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("PromoCodeId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTimeOffset>("RedeemedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.HasKey("UserId", "PromoCodeId");
+
+                    b.HasIndex("PromoCodeId");
+
+                    b.ToTable("PromoCodeRedemptions");
+                });
+
             modelBuilder.Entity("SkillLoop.Api.Models.SavedCourse", b =>
                 {
                     b.Property<string>("UserId")
@@ -564,6 +608,54 @@ namespace SkillLoop.Api.Migrations
                     b.HasIndex("CourseId");
 
                     b.ToTable("SavedCourses");
+                });
+
+            modelBuilder.Entity("SkillLoop.Api.Models.Transaction", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Amount")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("BookingId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BookingId", "Type")
+                        .IsUnique()
+                        .HasFilter("[BookingId] IS NOT NULL");
+
+                    b.HasIndex("UserId", "CreatedAt");
+
+                    b.ToTable("WalletTransactions", (string)null);
+                });
+
+            modelBuilder.Entity("SkillLoop.Api.Models.Wallet", b =>
+                {
+                    b.Property<string>("UserId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("Balance")
+                        .HasColumnType("int");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("Wallets");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -669,6 +761,15 @@ namespace SkillLoop.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Conversation");
+                });
+
+            modelBuilder.Entity("SkillLoop.Api.Models.PromoCodeRedemption", b =>
+                {
+                    b.HasOne("SkillLoop.Api.Models.PromoCode", null)
+                        .WithMany()
+                        .HasForeignKey("PromoCodeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("SkillLoop.Api.Models.SavedCourse", b =>
