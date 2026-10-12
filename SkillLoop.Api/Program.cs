@@ -63,7 +63,7 @@ builder.Services.AddScoped<IWalletService, FakeWalletService>();
 builder.Services.AddScoped<IChatService, FakeChatService>();
 builder.Services.AddScoped<IConversationService, ConversationService>();
 builder.Services.AddSignalR();
-
+builder.Services.AddScoped<WalletService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
