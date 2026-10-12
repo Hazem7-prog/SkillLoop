@@ -59,17 +59,25 @@ builder.Services.AddAuthentication(o =>
         }
     };
 });
-builder.Services.AddScoped<IWalletService, FakeWalletService>();
-builder.Services.AddScoped<IChatService, FakeChatService>();
+
+//Wallet
+builder.Services.AddScoped<WalletService>();
+builder.Services.AddScoped<IWalletService>(sp => sp.GetRequiredService<WalletService>());
+//Chat
+builder.Services.AddScoped<IChatService, ChatService>();
+//conversation
 builder.Services.AddScoped<IConversationService, ConversationService>();
 builder.Services.AddSignalR();
-builder.Services.AddScoped<WalletService>();
+//Token
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+//Availability
 builder.Services.AddScoped<IAvailabilityService, AvailabilityService>();
+//Booking
 builder.Services.AddScoped<IBookingService, BookingService>();
 builder.Services.AddHostedService<BookingCompletionWorker>();
+
 builder.Services.AddSwaggerGen(c =>
 {
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
