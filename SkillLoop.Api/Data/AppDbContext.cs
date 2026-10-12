@@ -29,6 +29,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
 
     public DbSet<PromoCodeRedemption> PromoCodeRedemptions => Set<PromoCodeRedemption>();
 
+    public DbSet<Notification> Notifications => Set<Notification>();
+
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -142,6 +144,27 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             .HasOne<PromoCode>()
             .WithMany()
             .HasForeignKey(r => r.PromoCodeId);
+
+        // Notifications
+
+        builder.Entity<Notification>()
+            .HasOne<ApplicationUser>()
+            .WithMany()
+            .HasForeignKey(n => n.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<Notification>()
+            .Property(n => n.Text)
+            .HasMaxLength(2000)
+            .IsRequired();
+
+        builder.Entity<Notification>()
+            .HasIndex(n => new
+            {
+                n.UserId,
+                n.CreatedAt
+            });
+
 
     }
 }
