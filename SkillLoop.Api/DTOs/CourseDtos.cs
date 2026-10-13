@@ -34,6 +34,7 @@ public class CourseDetailsDto : CourseListItemDto
     public bool AllowsOnline { get; set; }
     public bool AllowsOffline { get; set; }
     public string? OfflineLocation { get; set; }
+    public DateOnly? EndDate { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public int StudentsCount { get; set; }
     public bool IsSaved { get; set; }

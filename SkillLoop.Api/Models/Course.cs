@@ -28,6 +28,9 @@ public class Course
     public bool AllowsOffline { get; set; }
     public string? OfflineLocation { get; set; }            // e.g. "Cairo, Egypt"
 
+    // Last day (UTC, inclusive) on which sessions are offered. null = open-ended.
+    public DateOnly? EndDate { get; set; }
+
     public CourseStatus Status { get; set; } = CourseStatus.Active;
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 

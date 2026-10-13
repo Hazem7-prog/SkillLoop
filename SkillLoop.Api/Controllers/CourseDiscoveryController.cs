@@ -29,6 +29,7 @@ public class CourseDiscoveryController : ControllerBase
     {
         limit = Math.Clamp(limit, 1, 30);
         var userId = CurrentUserId;
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
 
         var myBookings = await _db.Bookings
             .AsNoTracking()
@@ -42,6 +43,7 @@ public class CourseDiscoveryController : ControllerBase
         var items = await (
             from c in _db.Courses.AsNoTracking()
             where c.Status == CourseStatus.Active
+               && (c.EndDate == null || c.EndDate >= today)
                && c.TeacherId != userId
                && !bookedCourseIds.Contains(c.Id)
             join u in _db.Users on c.TeacherId equals u.Id
@@ -65,6 +67,78 @@ public class CourseDiscoveryController : ControllerBase
             })
             .Take(limit)
             .ToListAsync();
+
+        return Ok(items);
+    }
+
+    // Badge rules (tweak the numbers freely)
+    private const int TrendingWindowDays = 7;
+    private const int TrendingMinBookings = 3;
+    private const int NewWindowDays = 14;
+    private const int PopularMinBookings = 5;
+
+    private static int BadgeRank(string? badge) => badge switch
+    {
+        "Trending" => 0,
+        "New" => 1,
+        "Popular" => 2,
+        _ => 3
+    };
+
+    // GET /api/courses/discover?limit=10   ("Discover New Skills" on Home)
+    // Trending = several bookings this week, New = created recently, Popular = booked a lot overall.
+    [HttpGet("discover")]
+    public async Task<ActionResult<List<DiscoverCourseDto>>> Discover([FromQuery] int limit = 10)
+    {
+        limit = Math.Clamp(limit, 1, 30);
+        var userId = CurrentUserId;
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var trendingSince = DateTimeOffset.UtcNow.AddDays(-TrendingWindowDays);
+        var newSince = DateTimeOffset.UtcNow.AddDays(-NewWindowDays);
+
+        var rows = await (
+            from c in _db.Courses.AsNoTracking()
+            where c.Status == CourseStatus.Active && (c.EndDate == null || c.EndDate >= today) && c.TeacherId != userId
+            join u in _db.Users on c.TeacherId equals u.Id
+            select new
+            {
+                Dto = new DiscoverCourseDto
+                {
+                    Id = c.Id,
+                    Title = c.Title,
+                    CategoryId = c.CategoryId,
+                    CategoryName = c.Category.Name,
+                    CoverImageUrl = c.CoverImageUrl,
+                    Level = c.Level,
+                    PricePerSession = c.PricePerSession,
+                    DurationMinutes = c.DurationMinutes,
+                    TotalSessions = c.TotalSessions,
+                    TeacherId = c.TeacherId,
+                    TeacherName = u.FullName,
+                    TeacherAvatarUrl = u.AvatarUrl
+                },
+                c.CreatedAt,
+                Total = c.Bookings.Count(b => b.Status != BookingStatus.Cancelled),
+                Recent = c.Bookings.Count(b => b.Status != BookingStatus.Cancelled && b.CreatedAt >= trendingSince)
+            })
+            .ToListAsync();
+
+        var items = rows
+            .Select(r =>
+            {
+                r.Dto.Badge = r.Recent >= TrendingMinBookings ? "Trending"
+                            : r.CreatedAt >= newSince ? "New"
+                            : r.Total >= PopularMinBookings ? "Popular"
+                            : null;
+                return r;
+            })
+            .OrderBy(r => BadgeRank(r.Dto.Badge))
+            .ThenByDescending(r => r.Recent)
+            .ThenByDescending(r => r.Total)
+            .ThenByDescending(r => r.CreatedAt)
+            .Take(limit)
+            .Select(r => r.Dto)
+            .ToList();
 
         return Ok(items);
     }

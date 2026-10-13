@@ -67,14 +67,15 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             .HasDefaultValue(true);
 
         builder.Entity<Category>().HasData(
-            new Category { Id = 1, Name = "Programming", Icon = "code" },
-            new Category { Id = 2, Name = "Design", Icon = "palette" },
-            new Category { Id = 3, Name = "Languages", Icon = "language" },
-            new Category { Id = 4, Name = "Music", Icon = "music" },
-            new Category { Id = 5, Name = "Business", Icon = "briefcase" },
-            new Category { Id = 6, Name = "Photography", Icon = "camera" },
-            new Category { Id = 7, Name = "Cooking", Icon = "chef-hat" },
-            new Category { Id = 8, Name = "Fitness", Icon = "dumbbell" }
+            new Category { Id = 2, Name = "Design",      Icon = "palette",     SortOrder = 1 },
+            new Category { Id = 1, Name = "Coding",      Icon = "code",        SortOrder = 2 },
+            new Category { Id = 9, Name = "AI",          Icon = "sparkles",    SortOrder = 3 },
+            new Category { Id = 5, Name = "Marketing",   Icon = "trending-up", SortOrder = 4 },
+            new Category { Id = 3, Name = "Languages",   Icon = "language",    SortOrder = 5 },
+            new Category { Id = 4, Name = "Music",       Icon = "music",       SortOrder = 6 },
+            new Category { Id = 6, Name = "Photography", Icon = "camera",      SortOrder = 7 },
+            new Category { Id = 7, Name = "Cooking",     Icon = "chef-hat",    SortOrder = 8 },
+            new Category { Id = 8, Name = "Fitness",     Icon = "dumbbell",    SortOrder = 9 }
         );
 
         // Chat & Conversations (C)

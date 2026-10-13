@@ -30,7 +30,8 @@ public class AvailabilityService : IAvailabilityService
                 c.MaxStudentsPerSession,
                 c.AllowsOnline,
                 c.AllowsOffline,
-                c.OfflineLocation
+                c.OfflineLocation,
+                c.EndDate
             })
             .FirstOrDefaultAsync();
 
@@ -38,7 +39,9 @@ public class AvailabilityService : IAvailabilityService
 
         // The teacher's weekly slots for this weekday (e.g. every Wednesday at 10:00 UTC)
         var weekday = date.DayOfWeek;
-        var times = await _db.CourseAvailabilities
+        // After the course's end date no slots are offered
+        var pastEnd = course.EndDate.HasValue && date > course.EndDate.Value;
+        var times = pastEnd ? new List<TimeOnly>() : await _db.CourseAvailabilities
             .AsNoTracking()
             .Where(a => a.CourseId == courseId && a.DayOfWeek == weekday)
             .Select(a => a.StartTime)

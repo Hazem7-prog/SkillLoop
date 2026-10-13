@@ -28,6 +28,7 @@ public class CreateCourseRequest
     public bool? AllowsOnline { get; set; }           // default true
     public bool? AllowsOffline { get; set; }          // default false
     public string? OfflineLocation { get; set; }      // required if AllowsOffline
+    public DateOnly? EndDate { get; set; }            // optional: last day sessions are offered
     public List<ScheduleSlotDto>? Schedule { get; set; }
 }
 
@@ -51,4 +52,21 @@ public class TeachingCourseDto
     public int TotalSessions { get; set; }
     public int UpcomingBookings { get; set; }
     public int StudentsCount { get; set; }
+
+    public int CompletedSessions { get; set; }
+    public DateOnly? EndDate { get; set; }
+    public DateTimeOffset? NextSessionStart { get; set; }   // date shown on the Teach row
+    public string DisplayStatus { get; set; } = string.Empty;   // Active / Completed / Cancelled (the badge)
 }
+
+// The tabs on the Teach screen
+public enum TeachingTab
+{
+    All,
+    Active,      // open: not cancelled and not past its end date
+    Upcoming,    // open and has at least one upcoming booking
+    Completed,   // past its end date
+    Cancelled    // cancelled by the teacher
+}
+
+public record CourseCancelResultDto(int CancelledBookings, int CreditsRefunded);
