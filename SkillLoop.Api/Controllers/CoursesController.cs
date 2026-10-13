@@ -30,9 +30,11 @@ public class CoursesController : ControllerBase
         page = Math.Max(page, 1);
         pageSize = Math.Clamp(pageSize, 1, 50);
 
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
         var query = _db.Courses
             .AsNoTracking()
-            .Where(c => c.Status == CourseStatus.Active);
+            .Where(c => c.Status == CourseStatus.Active && (c.EndDate == null || c.EndDate >= today));
 
         if (categoryId.HasValue)
             query = query.Where(c => c.CategoryId == categoryId.Value);
@@ -42,7 +44,9 @@ public class CoursesController : ControllerBase
             var term = search.Trim();
             query = query.Where(c => c.Title.Contains(term)
                                   || c.Description.Contains(term)
-                                  || c.Tags.Contains(term));
+                                  || c.Tags.Contains(term)
+                                  || c.Category.Name.Contains(term)
+                                  || _db.Users.Any(u => u.Id == c.TeacherId && u.FullName.Contains(term)));
         }
 
         var total = await query.CountAsync();
@@ -109,7 +113,8 @@ public class CoursesController : ControllerBase
                     MaxStudentsPerSession = c.MaxStudentsPerSession,
                     AllowsOnline = c.AllowsOnline,
                     AllowsOffline = c.AllowsOffline,
-                    OfflineLocation = c.OfflineLocation
+                    OfflineLocation = c.OfflineLocation,
+                    EndDate = c.EndDate
                 },
                 c.Tags,
                 c.LearningOutcomes

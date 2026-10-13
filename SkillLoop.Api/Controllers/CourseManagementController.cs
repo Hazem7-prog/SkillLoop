@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using SkillLoop.Api.Data;
 using SkillLoop.Api.DTOs;
 using SkillLoop.Api.Models;
+using SkillLoop.Api.Services;
 
 namespace SkillLoop.Api.Controllers;
 
@@ -16,7 +17,13 @@ public class CourseManagementController : ControllerBase
 {
     private readonly AppDbContext _db;
 
-    public CourseManagementController(AppDbContext db) => _db = db;
+    private readonly IBookingService _bookings;
+
+    public CourseManagementController(AppDbContext db, IBookingService bookings)
+    {
+        _db = db;
+        _bookings = bookings;
+    }
 
     private string CurrentUserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
 
@@ -51,6 +58,9 @@ public class CourseManagementController : ControllerBase
             return BadRequest(Err("A course can have at most 10 tags."));
         if (tags.Any(t => t.Length > 30 || t.Contains(',')))
             return BadRequest(Err("Each tag must be 30 characters or fewer and cannot contain commas."));
+
+        if (req.EndDate is not null && req.EndDate < DateOnly.FromDateTime(DateTime.UtcNow))
+            return BadRequest(Err("EndDate cannot be in the past."));
 
         var capacity = req.MaxStudentsPerSession ?? 1;
         if (capacity is < 1 or > 50)
@@ -105,6 +115,7 @@ public class CourseManagementController : ControllerBase
             LearningOutcomes = string.Join("\n", outcomes),
             CoverImageUrl = string.IsNullOrEmpty(cover) ? null : cover,
             MaxStudentsPerSession = capacity,
+            EndDate = req.EndDate,
             AllowsOnline = allowsOnline,
             AllowsOffline = allowsOffline,
             OfflineLocation = allowsOffline ? offlineLocation : null,
@@ -119,15 +130,28 @@ public class CourseManagementController : ControllerBase
             new { id = course.Id }, new CreateCourseResponse(course.Id));
     }
 
-    // GET /api/courses/mine/teaching?status=Active
+    // GET /api/courses/mine/teaching?tab=All|Active|Upcoming|Completed|Cancelled
     [HttpGet("mine/teaching")]
-    public async Task<ActionResult<List<TeachingCourseDto>>> MineTeaching([FromQuery] CourseStatus? status)
+    public async Task<ActionResult<List<TeachingCourseDto>>> MineTeaching([FromQuery] TeachingTab tab = TeachingTab.All)
     {
         var userId = CurrentUserId;
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var now = DateTimeOffset.UtcNow;
 
         var query = _db.Courses.AsNoTracking().Where(c => c.TeacherId == userId);
-        if (status.HasValue)
-            query = query.Where(c => c.Status == status.Value);
+
+        query = tab switch
+        {
+            TeachingTab.Active => query.Where(c => c.Status == CourseStatus.Active
+                                                && (c.EndDate == null || c.EndDate >= today)),
+            TeachingTab.Upcoming => query.Where(c => c.Status == CourseStatus.Active
+                                                  && (c.EndDate == null || c.EndDate >= today)
+                                                  && c.Bookings.Any(b => b.Status == BookingStatus.Upcoming)),
+            TeachingTab.Completed => query.Where(c => c.Status == CourseStatus.Active
+                                                   && c.EndDate != null && c.EndDate < today),
+            TeachingTab.Cancelled => query.Where(c => c.Status == CourseStatus.Archived),
+            _ => query
+        };
 
         var items = await query
             .OrderByDescending(c => c.CreatedAt)
@@ -142,7 +166,9 @@ public class CourseManagementController : ControllerBase
                 PricePerSession = c.PricePerSession,
                 DurationMinutes = c.DurationMinutes,
                 TotalSessions = c.TotalSessions,
+                EndDate = c.EndDate,
                 UpcomingBookings = c.Bookings.Count(b => b.Status == BookingStatus.Upcoming),
+                CompletedSessions = c.Bookings.Count(b => b.Status == BookingStatus.Completed),
                 StudentsCount = c.Bookings
                     .Where(b => b.Status != BookingStatus.Cancelled)
                     .Select(b => b.StudentId)
@@ -151,7 +177,40 @@ public class CourseManagementController : ControllerBase
             })
             .ToListAsync();
 
+        // Next session date per course (grouped in memory: simple and safe)
+        var ids = items.Select(i => i.Id).ToList();
+        var upcoming = await _db.Bookings
+            .AsNoTracking()
+            .Where(b => ids.Contains(b.CourseId) && b.Status == BookingStatus.Upcoming)
+            .Select(b => new { b.CourseId, b.StartTime })
+            .ToListAsync();
+
+        foreach (var item in items)
+        {
+            item.NextSessionStart = upcoming
+                .Where(u => u.CourseId == item.Id && u.StartTime > now)
+                .OrderBy(u => u.StartTime)
+                .Select(u => (DateTimeOffset?)u.StartTime)
+                .FirstOrDefault();
+
+            item.DisplayStatus =
+                item.Status == CourseStatus.Archived ? "Cancelled"
+                : item.EndDate is not null && item.EndDate < today ? "Completed"
+                : "Active";
+        }
+
         return Ok(items);
+    }
+
+    // POST /api/courses/{id}/cancel   (teacher only)
+    // Cancels the course, cancels its upcoming bookings and refunds every student.
+    [HttpPost("{id:int}/cancel")]
+    public async Task<IActionResult> CancelCourse(int id)
+    {
+        var result = await _bookings.CancelCourseAsync(CurrentUserId, id);
+        return result.Success
+            ? Ok(result.Value)
+            : StatusCode(result.StatusCode, result.Error);
     }
 
     // GET /api/courses/{id}/schedule  (teacher only: the weekly slots they set)

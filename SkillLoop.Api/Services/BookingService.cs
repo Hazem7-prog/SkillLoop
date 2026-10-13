@@ -12,6 +12,7 @@ public interface IBookingService
     Task<ServiceResult<BookingDto>> CreateAsync(string userId, CreateBookingRequest req);
     Task<List<BookingDto>> GetMineAsync(string userId, BookingStatus? status);
     Task<ServiceResult<BookingDto>> CancelAsync(string userId, int bookingId);
+    Task<ServiceResult<CourseCancelResultDto>> CancelCourseAsync(string teacherId, int courseId);
 }
 
 public class BookingService : IBookingService
@@ -59,7 +60,7 @@ public class BookingService : IBookingService
         if (!typeAllowed)
             return Fail(400, $"This course does not offer {req.Type} sessions.", "SESSION_TYPE_NOT_ALLOWED");
 
-        // The requested time must be one of the teacher's real slots
+        // The requested time must be one of the teacher's real slots (and before the course's end date)
         var availability = await _availability.GetAsync(course.Id, DateOnly.FromDateTime(start.UtcDateTime), userId);
         var slot = availability?.Slots.FirstOrDefault(s => s.StartTime == start);
         if (slot is null)
@@ -71,9 +72,15 @@ public class BookingService : IBookingService
         await using var tx = await _db.Database.BeginTransactionAsync();
 
         // Lock this course's row until the transaction ends, so two students booking the
-        // last spot at the same time are processed one after the other.
+        // last spot at the same time (or a booking during a course cancellation) are processed one after the other.
         await _db.Database.ExecuteSqlInterpolatedAsync(
             $"SELECT Id FROM Courses WITH (UPDLOCK, ROWLOCK) WHERE Id = {course.Id}");
+
+        // The teacher may have cancelled the course while we were waiting for the lock
+        var stillActive = await _db.Courses.AsNoTracking()
+            .AnyAsync(c => c.Id == course.Id && c.Status == CourseStatus.Active);
+        if (!stillActive)
+            return Fail(409, "This course was cancelled by the teacher.", "COURSE_CANCELLED");
 
         var takenBy = await _db.Bookings
             .Where(b => b.CourseId == course.Id && b.StartTime == start && b.Status != BookingStatus.Cancelled)
@@ -112,7 +119,7 @@ public class BookingService : IBookingService
 
         await tx.CommitAsync();
 
-        // Messages are sent AFTER the commit: a chat problem must never undo a paid booking
+        // Messages are sent AFTER the commit: a notification problem must never undo a paid booking
         var studentName = await _db.Users.Where(u => u.Id == userId).Select(u => u.FullName).FirstOrDefaultAsync();
         var when = FormatTime(start);
         await TryNotifyAsync(userId,
@@ -139,7 +146,7 @@ public class BookingService : IBookingService
             : await projected.OrderByDescending(b => b.StartTime).ToListAsync();
     }
 
-    // ---------------------------------------------------------------- cancel
+    // ---------------------------------------------------- cancel (student)
     public async Task<ServiceResult<BookingDto>> CancelAsync(string userId, int bookingId)
     {
         await using var tx = await _db.Database.BeginTransactionAsync();
@@ -160,7 +167,7 @@ public class BookingService : IBookingService
             return Fail(409, "This session has already started.", "SESSION_ALREADY_STARTED");
 
         booking.Status = BookingStatus.Cancelled;
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync();                 // the wallet reads the saved status
         await _wallet.RefundCredits(booking.Id);
         await tx.CommitAsync();
 
@@ -173,6 +180,50 @@ public class BookingService : IBookingService
 
         var dto = await Project(_db.Bookings.AsNoTracking().Where(b => b.Id == bookingId)).FirstAsync();
         return ServiceResult<BookingDto>.Ok(dto);
+    }
+
+    // ------------------------------------------------------ cancel (course)
+    // The teacher cancels the whole course: it is archived, its upcoming bookings are cancelled
+    // and every student is refunded. Sessions that already started are left alone.
+    public async Task<ServiceResult<CourseCancelResultDto>> CancelCourseAsync(string teacherId, int courseId)
+    {
+        await using var tx = await _db.Database.BeginTransactionAsync();
+
+        // Same lock the booking code takes: nobody can book this course while we cancel it
+        await _db.Database.ExecuteSqlInterpolatedAsync(
+            $"SELECT Id FROM Courses WITH (UPDLOCK, ROWLOCK) WHERE Id = {courseId}");
+
+        var course = await _db.Courses.FirstOrDefaultAsync(c => c.Id == courseId);
+        if (course is null)
+            return FailCourse(404, "Course not found.", "COURSE_NOT_FOUND");
+        if (course.TeacherId != teacherId)
+            return FailCourse(403, "You are not the teacher of this course.", "NOT_COURSE_OWNER");
+        if (course.Status == CourseStatus.Archived)
+            return FailCourse(409, "This course is already cancelled.", "COURSE_ALREADY_CANCELLED");
+
+        course.Status = CourseStatus.Archived;
+
+        var now = DateTimeOffset.UtcNow;
+        var bookings = await _db.Bookings
+            .Where(b => b.CourseId == courseId && b.Status == BookingStatus.Upcoming && b.StartTime > now)
+            .ToListAsync();
+
+        foreach (var b in bookings)
+            b.Status = BookingStatus.Cancelled;
+
+        await _db.SaveChangesAsync();                 // statuses must be saved before the wallet refunds
+
+        foreach (var b in bookings)
+            await _wallet.RefundCredits(b.Id);
+
+        await tx.CommitAsync();
+
+        foreach (var b in bookings)
+            await TryNotifyAsync(b.StudentId,
+                $"The teacher cancelled \"{course.Title}\". Your session on {FormatTime(b.StartTime)} was cancelled and {b.PricePaid} credits were refunded.");
+
+        return ServiceResult<CourseCancelResultDto>.Ok(
+            new CourseCancelResultDto(bookings.Count, bookings.Sum(b => b.PricePaid)));
     }
 
     // --------------------------------------------------------------- helpers
@@ -199,7 +250,7 @@ public class BookingService : IBookingService
     private async Task TryNotifyAsync(string userId, string text)
     {
         try { await _chat.SendSystemMessage(userId, text); }
-        catch (Exception ex) { _logger.LogWarning(ex, "Could not send system message to {UserId}", userId); }
+        catch (Exception ex) { _logger.LogWarning(ex, "Could not send notification to {UserId}", userId); }
     }
 
     private static string FormatTime(DateTimeOffset t) =>
@@ -207,4 +258,7 @@ public class BookingService : IBookingService
 
     private static ServiceResult<BookingDto> Fail(int status, string message, string code) =>
         ServiceResult<BookingDto>.Fail(status, message, code);
+
+    private static ServiceResult<CourseCancelResultDto> FailCourse(int status, string message, string code) =>
+        ServiceResult<CourseCancelResultDto>.Fail(status, message, code);
 }

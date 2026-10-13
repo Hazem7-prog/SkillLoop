@@ -24,6 +24,7 @@ public class TeachingController : ControllerBase
     public async Task<ActionResult<TeachingOverviewDto>> Overview()
     {
         var userId = CurrentUserId;
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
 
         // Every non-cancelled booking made on one of my courses
         var onMyCourses = _db.Bookings
@@ -33,7 +34,8 @@ public class TeachingController : ControllerBase
         var completed = onMyCourses.Where(b => b.Status == BookingStatus.Completed);
 
         var activeSessions = await _db.Courses
-            .CountAsync(c => c.TeacherId == userId && c.Status == CourseStatus.Active);
+            .CountAsync(c => c.TeacherId == userId && c.Status == CourseStatus.Active
+                          && (c.EndDate == null || c.EndDate >= today));
         var sessionsCompleted = await completed.CountAsync();
         // Teacher is paid the booking price when a session completes (no platform fee for now)
         var creditsEarned = await completed.SumAsync(b => (int?)b.PricePaid) ?? 0;

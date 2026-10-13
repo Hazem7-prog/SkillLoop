@@ -20,7 +20,7 @@ public class CategoriesController : ControllerBase
     {
         var categories = await _db.Categories
             .AsNoTracking()
-            .OrderBy(c => c.Name)
+            .OrderBy(c => c.SortOrder)
             .Select(c => new CategoryDto(c.Id, c.Name, c.Icon))
             .ToListAsync();
 

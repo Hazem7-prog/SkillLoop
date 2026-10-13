@@ -299,6 +299,9 @@ namespace SkillLoop.Api.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
 
                     b.ToTable("Categories");
@@ -306,51 +309,66 @@ namespace SkillLoop.Api.Migrations
                     b.HasData(
                         new
                         {
-                            Id = 1,
-                            Icon = "code",
-                            Name = "Programming"
+                            Id = 2,
+                            Icon = "palette",
+                            Name = "Design",
+                            SortOrder = 1
                         },
                         new
                         {
-                            Id = 2,
-                            Icon = "palette",
-                            Name = "Design"
+                            Id = 1,
+                            Icon = "code",
+                            Name = "Coding",
+                            SortOrder = 2
+                        },
+                        new
+                        {
+                            Id = 9,
+                            Icon = "sparkles",
+                            Name = "AI",
+                            SortOrder = 3
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Icon = "trending-up",
+                            Name = "Marketing",
+                            SortOrder = 4
                         },
                         new
                         {
                             Id = 3,
                             Icon = "language",
-                            Name = "Languages"
+                            Name = "Languages",
+                            SortOrder = 5
                         },
                         new
                         {
                             Id = 4,
                             Icon = "music",
-                            Name = "Music"
-                        },
-                        new
-                        {
-                            Id = 5,
-                            Icon = "briefcase",
-                            Name = "Business"
+                            Name = "Music",
+                            SortOrder = 6
                         },
                         new
                         {
                             Id = 6,
                             Icon = "camera",
-                            Name = "Photography"
+                            Name = "Photography",
+                            SortOrder = 7
                         },
                         new
                         {
                             Id = 7,
                             Icon = "chef-hat",
-                            Name = "Cooking"
+                            Name = "Cooking",
+                            SortOrder = 8
                         },
                         new
                         {
                             Id = 8,
                             Icon = "dumbbell",
-                            Name = "Fitness"
+                            Name = "Fitness",
+                            SortOrder = 9
                         });
                 });
 
@@ -418,6 +436,9 @@ namespace SkillLoop.Api.Migrations
 
                     b.Property<int>("DurationMinutes")
                         .HasColumnType("int");
+
+                    b.Property<DateOnly?>("EndDate")
+                        .HasColumnType("date");
 
                     b.Property<string>("LearningOutcomes")
                         .IsRequired()
